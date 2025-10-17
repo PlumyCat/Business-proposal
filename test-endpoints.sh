@@ -12,6 +12,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 FUNCTION_APP_NAME="${1:-business-proposal-functions}"
+RESOURCE_GROUP="my-word-mcp-rg"
 BASE_URL="https://$FUNCTION_APP_NAME.azurewebsites.net"
 
 echo "╔════════════════════════════════════════════════════════════════╗"
@@ -22,12 +23,37 @@ echo "Function App: $FUNCTION_APP_NAME"
 echo "Base URL: $BASE_URL"
 echo ""
 
-# Test 1: Clean Quote
-echo -e "${YELLOW}📋 Test 1: Clean Quote${NC}"
-echo "Endpoint: POST $BASE_URL/api/document/clean-quote"
+# Récupérer la function key
+echo -e "${YELLOW}🔑 Récupération de la function key...${NC}"
+if command -v az &> /dev/null; then
+    FUNCTION_KEY=$(az functionapp keys list \
+      --name $FUNCTION_APP_NAME \
+      --resource-group $RESOURCE_GROUP \
+      --query "functionKeys.default" -o tsv 2>/dev/null)
+
+    if [ -z "$FUNCTION_KEY" ]; then
+        echo -e "${RED}❌ Impossible de récupérer la function key${NC}"
+        echo "   Utilisez: az functionapp keys list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Function key récupérée${NC}"
+    echo "   Key: ${FUNCTION_KEY:0:10}..."
+else
+    echo -e "${YELLOW}⚠️  Azure CLI non installé, veuillez entrer la function key manuellement${NC}"
+    read -p "Function Key: " FUNCTION_KEY
+    if [ -z "$FUNCTION_KEY" ]; then
+        echo -e "${RED}❌ Function key requise${NC}"
+        exit 1
+    fi
+fi
 echo ""
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/document/clean-quote" \
+# Test 1: Clean Quote
+echo -e "${YELLOW}📋 Test 1: Clean Quote${NC}"
+echo "Endpoint: POST $BASE_URL/api/document/clean-quote?code=***"
+echo ""
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/document/clean-quote?code=$FUNCTION_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "blob_path": "Eric FER/test.docx",
@@ -48,10 +74,10 @@ echo ""
 
 # Test 2: Prepare Template
 echo -e "${YELLOW}📄 Test 2: Prepare Template${NC}"
-echo "Endpoint: POST $BASE_URL/api/proposal/prepare-template"
+echo "Endpoint: POST $BASE_URL/api/proposal/prepare-template?code=***"
 echo ""
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/proposal/prepare-template" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/api/proposal/prepare-template?code=$FUNCTION_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "template_name": "template.docx",
@@ -85,4 +111,9 @@ echo -e "${GREEN}╔════════════════════
 echo -e "${GREEN}║                    Tests terminés                              ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "💡 Pour tester complètement, utilisez des données réelles depuis Copilot Studio"
+echo "💡 Notes importantes:"
+echo "   - Tous les appels utilisent la function key récupérée"
+echo "   - Pour Copilot Studio, configurer l'authentification API Key (parameter: code)"
+echo "   - Voir FUNCTION_KEYS.md pour le guide complet"
+echo ""
+echo "🔑 Function key utilisée: ${FUNCTION_KEY:0:10}..."

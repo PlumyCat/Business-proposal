@@ -125,22 +125,44 @@ az functionapp function show \
   --query invokeUrlTemplate -o tsv
 ```
 
-### 6. Tester les Endpoints
+### 6. Récupérer la Function Key
+
+⚠️ **IMPORTANT**: Les endpoints sont protégés par function key (`authLevel: "function"`).
+
+```bash
+# Récupérer la default host key (fonctionne pour tous les endpoints)
+FUNCTION_KEY=$(az functionapp keys list \
+  --name $FUNCTION_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --query "functionKeys.default" -o tsv)
+
+echo "Function Key: $FUNCTION_KEY"
+```
+
+💡 **Voir `FUNCTION_KEYS.md` pour le guide complet d'utilisation des keys**
+
+### 7. Tester les Endpoints
 
 ```bash
 # URL de base
 FUNCTION_URL="https://$FUNCTION_APP_NAME.azurewebsites.net"
 
-# Test clean-quote
-curl -X POST "$FUNCTION_URL/api/clean-quote" \
+# Récupérer la function key (si pas déjà fait)
+FUNCTION_KEY=$(az functionapp keys list \
+  --name $FUNCTION_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --query "functionKeys.default" -o tsv)
+
+# Test clean-quote (AVEC FUNCTION KEY)
+curl -X POST "$FUNCTION_URL/api/document/clean-quote?code=$FUNCTION_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "blob_path": "Eric FER/test.docx",
     "user_folder": "Eric FER"
   }'
 
-# Test prepare-template
-curl -X POST "$FUNCTION_URL/api/prepare-template" \
+# Test prepare-template (AVEC FUNCTION KEY)
+curl -X POST "$FUNCTION_URL/api/proposal/prepare-template?code=$FUNCTION_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "template_name": "template.docx",
@@ -152,8 +174,8 @@ curl -X POST "$FUNCTION_URL/api/prepare-template" \
     "user_folder": "Eric FER"
   }'
 
-# Test generate (nécessite des GUIDs réels d'offres)
-curl -X POST "$FUNCTION_URL/api/generate" \
+# Test generate (AVEC FUNCTION KEY - nécessite des GUIDs réels d'offres)
+curl -X POST "$FUNCTION_URL/api/proposal/generate?code=$FUNCTION_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "working_file": "Eric FER/temp_working.docx",
@@ -225,13 +247,16 @@ func azure functionapp publish $FUNCTION_APP_NAME --python
 
 ## 🎯 URLs des Endpoints (après déploiement)
 
-Une fois déployé, vos endpoints seront accessibles à :
+Une fois déployé, vos endpoints seront accessibles à (⚠️ AVEC FUNCTION KEY):
 
-- **clean-quote**: `https://$FUNCTION_APP_NAME.azurewebsites.net/api/clean-quote`
-- **prepare-template**: `https://$FUNCTION_APP_NAME.azurewebsites.net/api/prepare-template`
-- **generate**: `https://$FUNCTION_APP_NAME.azurewebsites.net/api/generate`
+- **clean-quote**: `https://$FUNCTION_APP_NAME.azurewebsites.net/api/document/clean-quote?code=FUNCTION_KEY`
+- **prepare-template**: `https://$FUNCTION_APP_NAME.azurewebsites.net/api/proposal/prepare-template?code=FUNCTION_KEY`
+- **generate**: `https://$FUNCTION_APP_NAME.azurewebsites.net/api/proposal/generate?code=FUNCTION_KEY`
 
-Ces URLs sont à configurer dans Copilot Studio pour les actions personnalisées.
+**Important pour Copilot Studio**:
+- Dans la configuration de l'action, utiliser l'URL sans `?code=...`
+- Configurer l'authentification avec **API Key** (parameter name: `code`, location: Query)
+- Voir `FUNCTION_KEYS.md` pour le guide complet
 
 ## 📝 Checklist Finale
 
@@ -239,6 +264,7 @@ Ces URLs sont à configurer dans Copilot Studio pour les actions personnalisées
 - [ ] Variables d'environnement configurées
 - [ ] Application Insights activé
 - [ ] Code déployé
-- [ ] Tests des 3 endpoints réussis
+- [ ] Function key récupérée (`az functionapp keys list`)
+- [ ] Tests des 3 endpoints réussis (avec function key)
 - [ ] CORS configuré pour Copilot Studio
-- [ ] URLs documentées pour la configuration Copilot
+- [ ] URLs et function key documentées pour la configuration Copilot

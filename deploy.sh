@@ -108,6 +108,21 @@ echo -e "${YELLOW}📤 Déploiement du code...${NC}"
 func azure functionapp publish $FUNCTION_APP_NAME --python
 
 echo ""
+
+# Récupérer la function key
+echo -e "${YELLOW}🔑 Récupération de la function key...${NC}"
+FUNCTION_KEY=$(az functionapp keys list \
+  --name $FUNCTION_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --query "functionKeys.default" -o tsv 2>/dev/null)
+
+if [ -n "$FUNCTION_KEY" ]; then
+    echo -e "${GREEN}✅ Function key: $FUNCTION_KEY${NC}"
+else
+    echo -e "${YELLOW}⚠️  Function key non disponible (récupérer plus tard)${NC}"
+fi
+echo ""
+
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║                 ✅ DÉPLOIEMENT RÉUSSI !                        ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════════╝${NC}"
@@ -117,13 +132,26 @@ echo ""
 echo "1. Configurer les variables d'environnement:"
 echo "   Voir DEPLOYMENT.md section 'Configurer les Variables d'Environnement'"
 echo ""
-echo "2. Tester les endpoints:"
-echo "   https://$FUNCTION_APP_NAME.azurewebsites.net/api/document/clean-quote"
-echo "   https://$FUNCTION_APP_NAME.azurewebsites.net/api/proposal/prepare-template"
-echo "   https://$FUNCTION_APP_NAME.azurewebsites.net/api/proposal/generate"
+echo "2. Tester les endpoints (avec function key):"
+if [ -n "$FUNCTION_KEY" ]; then
+    echo "   https://$FUNCTION_APP_NAME.azurewebsites.net/api/document/clean-quote?code=$FUNCTION_KEY"
+    echo "   https://$FUNCTION_APP_NAME.azurewebsites.net/api/proposal/prepare-template?code=$FUNCTION_KEY"
+    echo "   https://$FUNCTION_APP_NAME.azurewebsites.net/api/proposal/generate?code=$FUNCTION_KEY"
+else
+    echo "   Récupérer d'abord la function key:"
+    echo "   az functionapp keys list --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP"
+fi
+echo ""
+echo "   OU utiliser le script de test:"
+echo "   ./test-endpoints.sh $FUNCTION_APP_NAME"
 echo ""
 echo "3. Configurer CORS pour Copilot Studio:"
 echo "   az functionapp cors add --name $FUNCTION_APP_NAME \\"
 echo "     --resource-group $RESOURCE_GROUP \\"
 echo "     --allowed-origins \"https://copilotstudio.microsoft.com\""
+echo ""
+echo "4. Configurer dans Copilot Studio:"
+echo "   - Authentification: API Key (parameter: code, location: Query)"
+echo "   - Function key: $FUNCTION_KEY"
+echo "   - Voir FUNCTION_KEYS.md pour le guide complet"
 echo ""
