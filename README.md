@@ -72,10 +72,17 @@ cp local.settings.json local.settings.json.local
     "DATAVERSE_URL": "https://<org>.crm.dynamics.com",
     "DATAVERSE_CLIENT_ID": "<client-id>",
     "DATAVERSE_CLIENT_SECRET": "<client-secret>",
-    "DATAVERSE_TENANT_ID": "<tenant-id>"
+    "DATAVERSE_TENANT_ID": "<tenant-id>",
+    "SHAREPOINT_SITE_URL": "https://<tenant>.sharepoint.com/sites/<site-name>",
+    "SHAREPOINT_TEMP_LIBRARY": "TempConversions"
   }
 }
 ```
+
+**Configuration SharePoint:**
+- Créer une bibliothèque SharePoint nommée "TempConversions" sur le site configuré
+- Cette bibliothèque est utilisée temporairement pour la conversion Word → PDF
+- Les fichiers sont automatiquement supprimés après conversion
 
 ### 5. Lancer Localement
 
@@ -91,9 +98,14 @@ Les endpoints seront disponibles sur `http://localhost:7071/api/`
 business-proposal-generator/
 ├── functions/               # Azure Functions
 │   ├── DocumentProcessor/   # Extraction et nettoyage documents
-│   ├── OfferManager/        # Gestion offres Dataverse
 │   ├── ProposalGenerator/   # Génération propositions
 │   └── shared/              # Code partagé
+│       ├── blob_client.py       # Client Azure Blob Storage
+│       ├── dataverse_client.py  # Client Dataverse
+│       ├── sharepoint_client.py # Client SharePoint (conversion PDF)
+│       ├── auth_helper.py       # Authentification Azure AD
+│       ├── logger.py            # Configuration logging
+│       └── validators.py        # Validation des données
 ├── copilot/                 # Configuration Copilot Studio
 ├── dataverse/               # Schémas Dataverse
 ├── infrastructure/          # IaC (Bicep)
@@ -125,6 +137,26 @@ business-proposal-generator/
 - `POST /api/proposal/save` - Sauvegarde métadonnées Dataverse
 
 **Note:** Les offres sont gérées directement par Copilot Studio via son connecteur Dataverse natif (pas besoin d'Azure Function)
+
+## Conversion Word → PDF
+
+La conversion des propositions Word (.docx) en PDF utilise SharePoint Online:
+
+1. Le fichier Word est uploadé temporairement vers une bibliothèque SharePoint
+2. SharePoint convertit automatiquement le fichier en PDF via son API native
+3. Le PDF est téléchargé et stocké dans Blob Storage
+4. Le fichier temporaire est supprimé de SharePoint
+
+**Avantages:**
+- Aucun service tiers requis (LibreOffice, CloudConvert, etc.)
+- Conversion native Microsoft avec haute fidélité
+- Déjà intégré dans l'écosystème Microsoft 365
+- Authentification unifiée via Azure AD
+
+**Prérequis:**
+- Site SharePoint Online accessible
+- Bibliothèque "TempConversions" créée sur le site
+- Permissions de lecture/écriture/suppression sur la bibliothèque
 
 ## Développement
 

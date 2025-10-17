@@ -38,10 +38,35 @@ Pas besoin d'Azure Function pour:
 10. Copilot affiche liens téléchargement
 ```
 
-## Avantages
+## Conversion PDF via SharePoint
+
+**Solution adoptée:** Utilisation de SharePoint Online pour la conversion Word → PDF
+
+**Workflow de conversion:**
+```
+1. Azure Function génère le document Word en mémoire
+2. Upload temporaire vers SharePoint (bibliothèque "TempConversions")
+3. Demande du fichier en format PDF via API SharePoint
+4. SharePoint convertit automatiquement le .docx en PDF
+5. Téléchargement du PDF généré
+6. Suppression du fichier temporaire de SharePoint
+7. Upload du PDF vers Blob Storage
+```
+
+**Avantages:**
+- ✅ Conversion native Microsoft (haute fidélité)
+- ✅ Pas de service tiers (LibreOffice, CloudConvert, etc.)
+- ✅ Déjà dans l'écosystème Microsoft 365
+- ✅ Authentification unifiée Azure AD
+- ✅ Pas de conteneur Docker supplémentaire requis
+
+**Implémentation:** `functions/shared/sharepoint_client.py`
+
+## Avantages Architecture Globale
 
 - ✅ Moins de code Azure Functions à maintenir
 - ✅ Moins de coûts (moins de fonction calls)
 - ✅ Utilise capacités natives Copilot Studio
 - ✅ Performance: pas de round-trip via Azure Function pour lire offres
 - ✅ Simplicité: connexion directe Copilot ↔ Dataverse
+- ✅ Conversion PDF native sans services tiers

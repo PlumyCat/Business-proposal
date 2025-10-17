@@ -19,6 +19,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from shared.blob_client import get_blob_client
 from shared.dataverse_client import get_dataverse_client
+from shared.sharepoint_client import get_sharepoint_client
 from shared.validators import validate_required_fields
 from shared.logger import setup_logger
 
@@ -136,28 +137,43 @@ def merge_content_into_template(
     return template_doc
 
 
-def convert_docx_to_pdf(docx_bytes: bytes) -> bytes:
+def convert_docx_to_pdf(docx_bytes: bytes, temp_filename: str) -> bytes:
     """
-    Convert Word document to PDF
+    Convert Word document to PDF using SharePoint
 
-    Note: This is a placeholder implementation.
-    Production should use:
-    - LibreOffice headless (requires Linux container)
-    - Azure Logic Apps with Word connector
-    - Third-party API (CloudConvert, etc.)
+    Uses SharePoint's native Word to PDF conversion capability by:
+    1. Uploading the Word file to a temporary SharePoint library
+    2. Requesting the file in PDF format (SharePoint converts automatically)
+    3. Downloading the PDF
+    4. Cleaning up the temporary file
 
     Args:
         docx_bytes: Word document as bytes
+        temp_filename: Temporary filename for SharePoint upload (should end with .docx)
 
     Returns:
         PDF document as bytes
-    """
-    logger.warning("PDF conversion not implemented - returning empty bytes")
-    logger.info("For production, implement one of: LibreOffice headless, Azure Logic Apps, or CloudConvert API")
 
-    # TODO: Implement actual PDF conversion
-    # For now, return empty bytes as placeholder
-    return b""
+    Raises:
+        Exception if conversion fails
+    """
+    logger.info(f"Converting Word to PDF via SharePoint: {temp_filename}")
+
+    try:
+        sharepoint_client = get_sharepoint_client()
+        pdf_bytes = sharepoint_client.convert_word_to_pdf(
+            word_content=docx_bytes,
+            file_name=temp_filename
+        )
+
+        logger.info(f"PDF conversion successful ({len(pdf_bytes)} bytes)")
+        return pdf_bytes
+
+    except Exception as e:
+        logger.error(f"SharePoint PDF conversion failed: {str(e)}")
+        # Return empty bytes if conversion fails - PDF is optional
+        logger.warning("Continuing without PDF - only Word document will be generated")
+        return b""
 
 
 def generate_proposal(req: func.HttpRequest) -> func.HttpResponse:
@@ -300,7 +316,7 @@ def generate_proposal(req: func.HttpRequest) -> func.HttpResponse:
         )
 
         # Convert to PDF and upload
-        pdf_bytes = convert_docx_to_pdf(word_bytes)
+        pdf_bytes = convert_docx_to_pdf(word_bytes, f"temp_{proposal_number}.docx")
         pdf_file_id = str(uuid.uuid4())
         pdf_blob_name = f"{proposal_number}.pdf"
 
