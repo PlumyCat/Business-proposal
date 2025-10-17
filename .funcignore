@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Development
+.env
+.env.local
+local.settings.json
+*.log
+
+# Tests
+tests/
+test_*.py
+*_test.py
+pytest_cache/
+.pytest_cache/
+*.coverage
+htmlcov/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+check_blob_structure.py
+table datavers.md
+test_real_infra.py
+
+# CSV exports
+*.csv
+
+# OS
+.DS_Store
+Thumbs.db

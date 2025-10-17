@@ -1,0 +1,26 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    
+    "AZURE_STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=mywordmcpacrstorage;AccountKey=YOUR_KEY_HERE;EndpointSuffix=core.windows.net",
+    
+    "BLOB_CONTAINER_TEMPLATES": "word-templates",
+    "BLOB_CONTAINER_DOCUMENTS": "word-documents",
+    
+    "DATAVERSE_ENVIRONMENT_URL": "https://YOUR_ORG.crm4.dynamics.com",
+    "DATAVERSE_CLIENT_ID": "YOUR_CLIENT_ID",
+    "DATAVERSE_CLIENT_SECRET": "YOUR_CLIENT_SECRET",
+    "DATAVERSE_TENANT_ID": "YOUR_TENANT_ID",
+    "DATAVERSE_TABLE_OFFERS": "crb02_offrebeclouds",
+    
+    "SHAREPOINT_SITE_URL": "https://YOUR_TENANT.sharepoint.com/sites/YOUR_SITE",
+    "SHAREPOINT_CLIENT_ID": "YOUR_CLIENT_ID",
+    "SHAREPOINT_CLIENT_SECRET": "YOUR_CLIENT_SECRET",
+    "SHAREPOINT_TENANT_ID": "YOUR_TENANT_ID",
+    "SHAREPOINT_LIBRARY_NAME": "Documents",
+    
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "YOUR_INSTRUMENTATION_KEY"
+  }
+}
