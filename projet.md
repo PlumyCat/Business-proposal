@@ -1,0 +1,3 @@
+le but serait de créer une proposition commerciale à partir d'un template qui a déjà une présentation ex en PJ un devis renseigné et un nettoyé
+
+je veux que l'utilisateur puisse donner un ancien devis, qu'il soit automatiquement nettoyé, les tableaux , et qu'on puisse lui donner des éléments a ajouter j'ai une liste des offres sur une table dataverse mais pas obligé de l'utiliser j'avais mis les doc sur un blob mais là aussi je m'en fou de la solution peut importe du moment qu'il y a un résultat avec cette bouze de copilot
