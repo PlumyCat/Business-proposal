@@ -25,6 +25,8 @@ Système de génération automatisée de propositions commerciales basé sur Azu
 
 - Subscription Azure (rôle Contributor)
 - Environnement Power Platform avec Dataverse
+  - ⚠️ **IMPORTANT:** Langue anglaise (code 1033) doit être activée pour MCP Microsoft
+  - Voir [dataverse/LIMITATIONS.md](dataverse/LIMITATIONS.md) pour détails
 - SharePoint Online
 - Microsoft Teams
 
@@ -207,6 +209,8 @@ cd infrastructure/scripts
 - [EPCT.md](EPCT.md) - Plan d'action EPCT détaillé (Explore-Plan-Code-Test)
 - [TODO.md](TODO.md) - Suivi des tâches par phase
 - [CLAUDE.md](CLAUDE.md) - Documentation pour Claude Code
+- [dataverse/schemas.md](dataverse/schemas.md) - Schémas des tables Dataverse
+- [dataverse/LIMITATIONS.md](dataverse/LIMITATIONS.md) - Limitations connues et workarounds
 - [docs/api_documentation.md](docs/api_documentation.md) - Documentation API complète
 
 ## Support
