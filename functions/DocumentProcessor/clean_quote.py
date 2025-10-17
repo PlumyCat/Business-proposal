@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from shared.blob_client import get_blob_client
 from shared.validators import validate_required_fields
 from shared.logger import setup_logger
+from shared.config import CONTAINER_TEMPLATES, get_user_file_path
 
 logger = setup_logger(__name__)
 
@@ -104,10 +105,8 @@ def clean_quote(req: func.HttpRequest) -> func.HttpResponse:
         # Initialize Blob client
         blob_client = get_blob_client()
 
-        # Extraire container et blob name du path
-        # Format attendu: "users/Jean Dupont/ancien_devis.docx"
-        # On suppose un container unique pour tout
-        container_name = os.environ.get("BLOB_CONTAINER_DEVIS", "devis-sources")
+        # Container: word-templates (contient general/ et dossiers utilisateurs)
+        container_name = CONTAINER_TEMPLATES
 
         # Télécharger le fichier depuis Blob Storage
         try:
@@ -137,7 +136,7 @@ def clean_quote(req: func.HttpRequest) -> func.HttpResponse:
         output_bytes = output_bytes_io.getvalue()
 
         # Upload vers Blob Storage comme fichier de travail
-        working_file_path = f"users/{user_folder}/temp_working.docx"
+        working_file_path = get_user_file_path(user_folder, "temp_working.docx")
 
         blob_url = blob_client.upload_blob(
             container_name=container_name,

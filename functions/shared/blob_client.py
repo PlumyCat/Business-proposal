@@ -22,11 +22,16 @@ class BlobStorageClient:
         Args:
             connection_string: Azure Storage connection string
                               Si None, utilise la variable d'environnement BLOB_STORAGE_CONNECTION_STRING
+                              ou AZURE_STORAGE_CONNECTION_STRING
         """
-        self.connection_string = connection_string or os.getenv("BLOB_STORAGE_CONNECTION_STRING")
+        self.connection_string = (
+            connection_string or
+            os.getenv("BLOB_STORAGE_CONNECTION_STRING") or
+            os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        )
 
         if not self.connection_string:
-            raise ValueError("Blob Storage connection string is required")
+            raise ValueError("Blob Storage connection string is required (BLOB_STORAGE_CONNECTION_STRING or AZURE_STORAGE_CONNECTION_STRING)")
 
         self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
 

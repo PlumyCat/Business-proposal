@@ -19,6 +19,7 @@ from shared.dataverse_client import get_dataverse_client
 from shared.sharepoint_client import get_sharepoint_client
 from shared.validators import validate_required_fields
 from shared.logger import setup_logger
+from shared.config import CONTAINER_TEMPLATES, CONTAINER_DOCUMENTS, TABLE_OFFERS, get_user_file_path
 
 logger = setup_logger(__name__)
 
@@ -53,27 +54,26 @@ def add_offers_to_table(doc: Document, offers: List[Dict]) -> int:
         # Colonnes: Description | Quantité | Prix Unitaire | Prix Total
         try:
             # Colonne 0: Description (nom + description de l'offre)
-            description = offer.get("cr_name", "")
-            if offer.get("cr_description"):
-                description += f"\n{offer['cr_description']}"
+            description = offer.get("crb02_offrebecloud1", "")
+            if offer.get("crb02_description"):
+                description += f"\n{offer['crb02_description']}"
             row.cells[0].text = description
 
             # Colonne 1: Quantité (à définir, par défaut 1)
             if len(row.cells) > 1:
                 row.cells[1].text = "1"
 
-            # Colonne 2: Prix Unitaire
+            # Colonne 2: Prix Unitaire HT
             if len(row.cells) > 2:
-                unit_price = offer.get("cr_unit_price", 0)
-                unit = offer.get("cr_unit", "")
-                row.cells[2].text = f"{unit_price:.2f} € / {unit}"
+                unit_price_ht = offer.get("crb02_prixht", 0)
+                row.cells[2].text = f"{unit_price_ht:.2f} € HT"
 
-            # Colonne 3: Prix Total (quantité * prix unitaire, par défaut quantité=1)
+            # Colonne 3: Prix Total HT (quantité * prix unitaire, par défaut quantité=1)
             if len(row.cells) > 3:
-                row.cells[3].text = f"{unit_price:.2f} €"
+                row.cells[3].text = f"{unit_price_ht:.2f} € HT"
 
             rows_added += 1
-            logger.debug(f"Added offer: {offer.get('cr_name')}")
+            logger.debug(f"Added offer: {offer.get('crb02_offrebecloud1')}")
 
         except Exception as e:
             logger.error(f"Error adding offer to table: {str(e)}")
@@ -151,11 +151,10 @@ def generate_proposal_simple(req: func.HttpRequest) -> func.HttpResponse:
         # Initialize clients
         blob_client = get_blob_client()
         dataverse_client = get_dataverse_client()
-        container_name = os.environ.get("BLOB_CONTAINER_DEVIS", "devis-sources")
 
-        # 1. Charger le fichier de travail
+        # 1. Charger le fichier de travail depuis word-templates
         try:
-            working_bytes = blob_client.download_blob(container_name, working_file)
+            working_bytes = blob_client.download_blob(CONTAINER_TEMPLATES, working_file)
             logger.info(f"Downloaded working file: {working_file}")
         except Exception as e:
             logger.error(f"Failed to download working file: {str(e)}")
@@ -171,14 +170,14 @@ def generate_proposal_simple(req: func.HttpRequest) -> func.HttpResponse:
         doc = Document(io.BytesIO(working_bytes))
 
         # 2. Récupérer les offres depuis Dataverse
-        logger.info(f"Fetching {len(offer_ids)} offers from Dataverse")
+        logger.info(f"Fetching {len(offer_ids)} offers from Dataverse table: {TABLE_OFFERS}")
         offers = []
         for offer_id in offer_ids:
             try:
                 offer = dataverse_client.get_record(
-                    entity_set="cr_offres",
+                    entity_set=TABLE_OFFERS,
                     record_id=offer_id,
-                    select=["cr_name", "cr_description", "cr_category", "cr_unit_price", "cr_unit", "cr_reference"]
+                    select=["crb02_offrebecloud1", "crb02_description", "crb02_service", "crb02_prixht", "crb02_prixttc"]
                 )
                 offers.append(offer)
             except Exception as e:
@@ -203,15 +202,15 @@ def generate_proposal_simple(req: func.HttpRequest) -> func.HttpResponse:
         doc.save(word_bytes_io)
         word_bytes = word_bytes_io.getvalue()
 
-        # Upload Word vers Blob Storage
-        word_file_path = f"users/{user_folder}/{proposal_filename}.docx"
+        # Upload Word vers Blob Storage (dans word-documents)
+        word_file_path = get_user_file_path(user_folder, f"{proposal_filename}.docx")
         word_url = blob_client.upload_blob(
-            container_name=container_name,
+            container_name=CONTAINER_DOCUMENTS,
             blob_name=word_file_path,
             data=word_bytes,
             overwrite=True
         )
-        logger.info(f"Word file saved to: {word_file_path}")
+        logger.info(f"Word file saved to: {CONTAINER_DOCUMENTS}/{word_file_path}")
 
         # 5. Convertir en PDF via SharePoint
         pdf_url = None
@@ -225,15 +224,15 @@ def generate_proposal_simple(req: func.HttpRequest) -> func.HttpResponse:
             )
 
             if pdf_bytes:
-                # Upload PDF vers Blob Storage
-                pdf_file_path = f"users/{user_folder}/{proposal_filename}.pdf"
+                # Upload PDF vers Blob Storage (dans word-documents)
+                pdf_file_path = get_user_file_path(user_folder, f"{proposal_filename}.pdf")
                 pdf_url = blob_client.upload_blob(
-                    container_name=container_name,
+                    container_name=CONTAINER_DOCUMENTS,
                     blob_name=pdf_file_path,
                     data=pdf_bytes,
                     overwrite=True
                 )
-                logger.info(f"PDF file saved to: {pdf_file_path}")
+                logger.info(f"PDF file saved to: {CONTAINER_DOCUMENTS}/{pdf_file_path}")
             else:
                 logger.warning("PDF conversion returned empty bytes")
 
