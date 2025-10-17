@@ -116,19 +116,15 @@ business-proposal-generator/
 
 ### DocumentProcessor
 
-- `POST /api/extract-content` - Extraction contenu document
-- `POST /api/clean-document` - Nettoyage document
-
-### OfferManager
-
-- `GET /api/offers` - Liste des offres disponibles
-- `GET /api/offers/{id}` - Détails d'une offre
+- `POST /api/document/extract-content` - Extraction contenu document
+- `POST /api/document/clean-document` - Nettoyage document
 
 ### ProposalGenerator
 
-- `POST /api/generate-proposal` - Génération proposition
-- `POST /api/convert-to-pdf` - Conversion PDF
-- `POST /api/save-proposal` - Sauvegarde métadonnées
+- `POST /api/proposal/generate` - Génération proposition Word/PDF
+- `POST /api/proposal/save` - Sauvegarde métadonnées Dataverse
+
+**Note:** Les offres sont gérées directement par Copilot Studio via son connecteur Dataverse natif (pas besoin d'Azure Function)
 
 ## Développement
 
