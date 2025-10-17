@@ -1,12 +1,14 @@
 """
 ProposalGenerator Azure Function
-Handles proposal generation (Word + PDF) and saving to Dataverse
+Handles template preparation and proposal generation (Word + PDF)
 """
 
 import json
 import logging
 import azure.functions as func
+from .prepare_template import prepare_template
 from .generate_proposal import generate_proposal
+from .generate_simple import generate_proposal_simple
 from .save_proposal import save_proposal
 
 # Setup logging
@@ -18,8 +20,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     Main entry point for ProposalGenerator function
 
     Endpoints:
-    - POST /api/proposal/generate - Generate proposal (Word + PDF)
-    - POST /api/proposal/save - Save proposal metadata to Dataverse
+    - POST /api/proposal/prepare-template - Prepare template with customer success info
+    - POST /api/proposal/generate - Generate proposal (Word + PDF) - Version simplifiée
+    - POST /api/proposal/generate-full - Generate proposal (Word + PDF) - Version complète (legacy)
+    - POST /api/proposal/save - Save proposal metadata to Dataverse (optional)
     """
     logger.info('ProposalGenerator function triggered')
 
@@ -27,14 +31,20 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     route = req.route_params.get('action')
 
     try:
-        if route == 'generate':
+        if route == 'prepare-template':
+            return prepare_template(req)
+        elif route == 'generate':
+            # Version simplifiée par défaut
+            return generate_proposal_simple(req)
+        elif route == 'generate-full':
+            # Version complète (legacy)
             return generate_proposal(req)
         elif route == 'save':
             return save_proposal(req)
         else:
             return func.HttpResponse(
                 json.dumps({
-                    "error": "Invalid route. Use /generate or /save"
+                    "error": "Invalid route. Use /prepare-template, /generate, /generate-full, or /save"
                 }),
                 status_code=404,
                 mimetype="application/json"

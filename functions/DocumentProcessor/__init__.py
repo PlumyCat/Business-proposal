@@ -8,6 +8,7 @@ import logging
 import azure.functions as func
 from .extract_content import extract_content
 from .clean_document import clean_document
+from .clean_quote import clean_quote
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -18,8 +19,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     Main entry point for DocumentProcessor function
 
     Endpoints:
-    - POST /api/extract-content - Extract content from document
-    - POST /api/clean-document - Clean extracted document
+    - POST /api/document/extract-content - Extract content from document
+    - POST /api/document/clean-document - Clean extracted document (legacy)
+    - POST /api/document/clean-quote - Clean old quote (empty tables only)
     """
     logger.info('DocumentProcessor function triggered')
 
@@ -31,10 +33,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             return extract_content(req)
         elif route == 'clean-document':
             return clean_document(req)
+        elif route == 'clean-quote':
+            return clean_quote(req)
         else:
             return func.HttpResponse(
                 json.dumps({
-                    "error": "Invalid route. Use /extract-content or /clean-document"
+                    "error": "Invalid route. Use /extract-content, /clean-document, or /clean-quote"
                 }),
                 status_code=404,
                 mimetype="application/json"
