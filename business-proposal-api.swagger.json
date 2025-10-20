@@ -1,0 +1,843 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Business Proposal API",
+    "description": "API de génération de propositions commerciales - Azure Functions",
+    "version": "1.0.0"
+  },
+  "host": "business-proposal-flex.azurewebsites.net",
+  "basePath": "/api",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/document/clean-quote": {
+      "post": {
+        "operationId": "CleanQuote",
+        "summary": "Nettoyer Clean un ancien devis - vider les tableaux tables",
+        "description": "Clean an old quote document by emptying all tables while preserving structure and formatting.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "description": "Path to the quote file in blob storage (e.g., 'Eric FER/quote.docx')",
+                  "x-ms-summary": "File Path"
+                }
+              },
+              "required": ["file_path"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "404": {
+            "description": "File Not Found"
+          }
+        }
+      }
+    },
+    "/document/delete": {
+      "delete": {
+        "operationId": "DeleteTemplate",
+        "summary": "Supprimer Delete un template ou document",
+        "description": "Delete a template or document from blob storage permanently.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "description": "Path to the file in blob storage (e.g., 'Eric FER/temp_working.docx')",
+                  "x-ms-summary": "File Path"
+                }
+              },
+              "required": ["file_path"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/SuccessResponse"
+            }
+          },
+          "404": {
+            "description": "File Not Found"
+          }
+        }
+      }
+    },
+    "/document/cleanup-expired": {
+      "delete": {
+        "operationId": "CleanupExpired",
+        "summary": "Nettoyer Clean les documents expirés (>24h)",
+        "description": "Cleanup documents older than specified hours (default 24h). Returns SAS URLs that are expired.",
+        "parameters": [
+          {
+            "name": "user_folder",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "description": "Folder to cleanup (optional, if not provided cleans all user folders)",
+            "x-ms-summary": "User Folder"
+          },
+          {
+            "name": "max_age_hours",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32",
+            "default": 24,
+            "description": "Maximum age in hours (default: 24)",
+            "x-ms-summary": "Max Age (hours)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "deleted_count": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Number of files deleted"
+                },
+                "deleted_files": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of deleted file paths"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/template/list-general": {
+      "get": {
+        "operationId": "ListGeneralTemplates",
+        "summary": "Lister List les templates généraux general disponibles available",
+        "description": "List all available general templates from the 'general/' folder. Bot can use this to show users available 
+templates before creating a new proposal.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "templates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Template file name"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Full path in blob storage"
+                      },
+                      "size": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "File size in bytes"
+                      },
+                      "last_modified": {
+                        "type": "string",
+                        "description": "Last modification date (ISO 8601)"
+                      }
+                    }
+                  }
+                },
+                "count": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Number of templates found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/template/list-user": {
+      "get": {
+        "operationId": "ListUserTemplates",
+        "summary": "Lister List les templates personnels user's personal templates de l'utilisateur",
+        "description": "List user's personal templates (working files) from '{user_folder}/' in word-templates container. Bot uses
+user.displayName from Copilot Studio as folder name.",
+        "parameters": [
+          {
+            "name": "user_folder",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "User folder name (e.g., 'Eric FER' from user.displayName)",
+            "x-ms-summary": "User Folder"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "user_folder": {
+                  "type": "string",
+                  "description": "User folder name"
+                },
+                "templates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Template file name"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Full path in blob storage"
+                      },
+                      "size": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "File size in bytes"
+                      },
+                      "last_modified": {
+                        "type": "string",
+                        "description": "Last modification date (ISO 8601)"
+                      }
+                    }
+                  }
+                },
+                "count": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Number of templates found"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required parameter: user_folder"
+          }
+        }
+      }
+    },
+    "/document/list-created": {
+      "get": {
+        "operationId": "ListCreatedDocuments",
+        "summary": "Lister List les documents créés created par l'utilisateur by user (Word PDF)",
+        "description": "List user's created documents (final files) from '{user_folder}/' in word-documents container. Includes 
+both Word (.docx) and PDF files. Bot uses user.displayName from Copilot Studio as folder name.",
+        "parameters": [
+          {
+            "name": "user_folder",
+            "in": "query",
+            "required": true,
+            "type": "string",
+            "description": "User folder name (e.g., 'Eric FER' from user.displayName)",
+            "x-ms-summary": "User Folder"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "user_folder": {
+                  "type": "string",
+                  "description": "User folder name"
+                },
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Document file name"
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Full path in blob storage"
+                      },
+                      "size": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "File size in bytes"
+                      },
+                      "last_modified": {
+                        "type": "string",
+                        "description": "Last modification date (ISO 8601)"
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "Document type: 'word' or 'pdf'"
+                      }
+                    }
+                  }
+                },
+                "count": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Number of documents found"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required parameter: user_folder"
+          }
+        }
+      }
+    },
+    "/document/get-sas-url": {
+      "post": {
+        "operationId": "GetSasUrl",
+        "summary": "Obtenir Get URL SAS temporaire temporary pour télécharger download un document",
+        "description": "Generate a temporary SAS URL with expiration for downloading any document. Bot can call this to provide 
+download links to users.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "file_path": {
+                  "type": "string",
+                  "description": "Path to the file in blob storage (e.g., 'Eric FER/temp_working.docx')",
+                  "x-ms-summary": "File Path"
+                },
+                "container": {
+                  "type": "string",
+                  "description": "Container name (optional, default: 'word-templates')",
+                  "x-ms-summary": "Container"
+                },
+                "expiry_hours": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Hours until URL expires (optional, default: 24, max: 168)",
+                  "x-ms-summary": "Expiry Hours"
+                },
+                "permissions": {
+                  "type": "string",
+                  "description": "Permissions: 'r' for read-only (optional, default: 'r')",
+                  "x-ms-summary": "Permissions"
+                }
+              },
+              "required": ["file_path"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "sas_url": {
+                  "type": "string",
+                  "description": "SAS URL with expiration token"
+                },
+                "file_path": {
+                  "type": "string",
+                  "description": "File path"
+                },
+                "expiry_hours": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Hours until expiration"
+                },
+                "container": {
+                  "type": "string",
+                  "description": "Container name"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File Not Found"
+          }
+        }
+      }
+    },
+    "/proposal/prepare-template": {
+      "post": {
+        "operationId": "PrepareTemplate",
+        "summary": "Préparer Prepare un template général",
+        "description": "Prepare a general template by creating temp_working.docx from a template and optionally replacing customer
+success placeholders.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "template_name": {
+                  "type": "string",
+                  "description": "Name of the template file (e.g., 'template.docx')",
+                  "x-ms-summary": "Template Name"
+                },
+                "customer_success": {
+                  "type": "object",
+                  "description": "Customer success info to replace in template (optional)",
+                  "x-ms-summary": "Customer Success Info",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Customer success name"
+                    },
+                    "tel": {
+                      "type": "string",
+                      "description": "Customer success phone"
+                    },
+                    "email": {
+                      "type": "string",
+                      "description": "Customer success email"
+                    }
+                  }
+                },
+                "user_folder": {
+                  "type": "string",
+                  "description": "User folder name (e.g., 'Eric FER')",
+                  "x-ms-summary": "User Folder"
+                }
+              },
+              "required": ["template_name", "user_folder"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "working_file": {
+                  "type": "string",
+                  "description": "Path to working file"
+                },
+                "blob_url": {
+                  "type": "string",
+                  "description": "Blob URL"
+                },
+                "template_used": {
+                  "type": "string",
+                  "description": "Template name used"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proposal/set-customer-info": {
+      "post": {
+        "operationId": "SetCustomerInfo",
+        "summary": "Définir Set les infos Customer Success en une fois",
+        "description": "Set customer success information (name, tel, email) in the working document all at once. Bot can 
+auto-retrieve these values.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "user_folder": {
+                  "type": "string",
+                  "description": "User folder name (e.g., 'Eric FER')",
+                  "x-ms-summary": "User Folder"
+                },
+                "customer_success": {
+                  "type": "object",
+                  "description": "Customer success info",
+                  "x-ms-summary": "Customer Success Info",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Customer success name"
+                    },
+                    "tel": {
+                      "type": "string",
+                      "description": "Customer success phone"
+                    },
+                    "email": {
+                      "type": "string",
+                      "description": "Customer success email"
+                    }
+                  },
+                  "required": ["name", "tel", "email"]
+                }
+              },
+              "required": ["user_folder", "customer_success"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "working_file": {
+                  "type": "string"
+                },
+                "customer_success": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proposal/add-offer-line": {
+      "post": {
+        "operationId": "AddOfferLine",
+        "summary": "Ajouter Add une ligne offre offer line au document",
+        "description": "Add a single offer line to the working document with dynamic table creation. Bot reads offers from Dataverse table 'crb02_offrebecloud' and calls this for each selected offer. If the service table doesn't exist, it's created automatically with headers and total row. The table total HT is automatically updated. Service codes: 480810003=Service cloud, 480810000=Services Cloud - Téléphonie, 480810004=Supports.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "user_folder": {
+                  "type": "string",
+                  "description": "User folder name (e.g., 'Eric FER')",
+                  "x-ms-summary": "User Folder"
+                },
+                "offer": {
+                  "type": "object",
+                  "description": "Offer details from Dataverse",
+                  "x-ms-summary": "Offer",
+                  "properties": {
+                    "crb02_offrebecloud1": {
+                      "type": "string",
+                      "description": "Offer name/designation (e.g., 'Microsoft 365 Apps for Business')",
+                      "x-ms-summary": "Offer Name"
+                    },
+                    "crb02_description": {
+                      "type": "string",
+                      "description": "Offer description (optional)",
+                      "x-ms-summary": "Description"
+                    },
+                    "crb02_prixht": {
+                      "type": "number",
+                      "description": "Unit price HT (€/user/month)",
+                      "x-ms-summary": "Unit Price HT"
+                    },
+                    "crb02_service": {
+                      "type": "string",
+                      "description": "Service code (480810003=MW/Service cloud, 480810000=BUBA/Téléphonie, 480810004=Support)",
+                      "x-ms-summary": "Service Code"
+                    },
+                    "quantity": {
+                      "type": "integer",
+                      "format": "int32",
+                      "description": "Quantity",
+                      "x-ms-summary": "Quantity"
+                    }
+                  },
+                  "required": ["crb02_offrebecloud1", "crb02_prixht", "crb02_service", "quantity"]
+                }
+              },
+              "required": ["user_folder", "offer"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "working_file": {
+                  "type": "string",
+                  "description": "Path to working file"
+                },
+                "service_name": {
+                  "type": "string",
+                  "description": "Service name (table title)"
+                },
+                "table_created_or_found": {
+                  "type": "string",
+                  "description": "Whether table was 'created' or 'found'"
+                },
+                "rows_in_table": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Total rows in table after adding"
+                },
+                "table_total_ht": {
+                  "type": "string",
+                  "description": "Total HT for this service table (e.g., '72.00 €')"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid service code or missing required fields"
+          },
+          "404": {
+            "description": "Not Found - Working file not found"
+          }
+        }
+      }
+    },
+    "/proposal/delete-offer-line": {
+      "delete": {
+        "operationId": "DeleteOfferLine",
+        "summary": "Supprimer Delete une ligne offre offer line du document",
+        "description": "Delete a single offer line from the working document. If the table becomes empty after deletion (only header + total remain), the entire table and its title are deleted automatically.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "user_folder": {
+                  "type": "string",
+                  "description": "User folder name (e.g., 'Eric FER')",
+                  "x-ms-summary": "User Folder"
+                },
+                "crb02_service": {
+                  "type": "string",
+                  "description": "Service code (480810003=MW/Service cloud, 480810000=BUBA/Téléphonie, 480810004=Support)",
+                  "x-ms-summary": "Service Code"
+                },
+                "offer_name": {
+                  "type": "string",
+                  "description": "Offer name to delete (optional if row_index provided)",
+                  "x-ms-summary": "Offer Name"
+                },
+                "row_index": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Row index to delete (1-based, optional if offer_name provided)",
+                  "x-ms-summary": "Row Index"
+                }
+              },
+              "required": ["user_folder", "crb02_service"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "working_file": {
+                  "type": "string",
+                  "description": "Path to working file"
+                },
+                "service_name": {
+                  "type": "string",
+                  "description": "Service name (table title)"
+                },
+                "deleted_offer": {
+                  "type": "string",
+                  "description": "Name of the deleted offer"
+                },
+                "table_deleted": {
+                  "type": "boolean",
+                  "description": "Whether the entire table was deleted (because it was empty)"
+                },
+                "rows_remaining": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Number of rows remaining in table (0 if table was deleted)"
+                },
+                "table_total_ht": {
+                  "type": "string",
+                  "description": "Total HT for this service table after deletion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid service code or missing required fields"
+          },
+          "404": {
+            "description": "Not Found - Working file, table, or offer not found"
+          }
+        }
+      }
+    },
+    "/proposal/generate": {
+      "post": {
+        "operationId": "GenerateFinalProposal",
+        "summary": "Générer Generate la proposition finale Word PDF",
+        "description": "Generate final proposal (Word + PDF) from temp_working.docx. Returns SAS URLs with 24h expiration for 
+download.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "user_folder": {
+                  "type": "string",
+                  "description": "User folder name (e.g., 'Eric FER')",
+                  "x-ms-summary": "User Folder"
+                },
+                "proposal_name": {
+                  "type": "string",
+                  "description": "Proposal name (optional, default: 'proposition')",
+                  "x-ms-summary": "Proposal Name"
+                }
+              },
+              "required": ["user_folder"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                },
+                "word_file": {
+                  "type": "string",
+                  "description": "Path to Word file"
+                },
+                "word_url": {
+                  "type": "string",
+                  "description": "SAS URL to download Word (expires in 24h)"
+                },
+                "pdf_file": {
+                  "type": "string",
+                  "description": "Path to PDF file"
+                },
+                "pdf_url": {
+                  "type": "string",
+                  "description": "SAS URL to download PDF (expires in 24h)"
+                },
+                "sas_expiry_hours": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "SAS token expiry duration in hours"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "SuccessResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Operation success status"
+        },
+        "message": {
+          "type": "string",
+          "description": "Success message"
+        }
+      }
+    }
+  },
+  "parameters": {},
+  "responses": {},
+  "securityDefinitions": {
+    "api_key": {
+      "type": "apiKey",
+      "in": "query",
+      "name": "code"
+    }
+  },
+  "security": [
+    {
+      "api_key": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Document Processing",
+      "description": "Operations for cleaning and managing documents"
+    },
+    {
+      "name": "Proposal Generation",
+      "description": "Operations for creating and generating business proposals"
+    }
+  ]
+}

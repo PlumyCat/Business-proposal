@@ -5,8 +5,9 @@ Gère les opérations de lecture/écriture sur Azure Blob Storage
 
 import os
 import logging
-from typing import Optional, BinaryIO
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+from typing import Optional, BinaryIO, List, Dict
+from datetime import datetime, timedelta
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, generate_blob_sas, BlobSasPermissions
 from azure.core.exceptions import ResourceNotFoundError, AzureError
 
 logger = logging.getLogger(__name__)
@@ -186,6 +187,89 @@ class BlobStorageClient:
         """
         blob_client = self.get_blob_client(container_name, blob_name)
         return blob_client.url
+
+    def generate_sas_url(
+        self,
+        container_name: str,
+        blob_name: str,
+        expiry_hours: int = 24,
+        permissions: str = "r"
+    ) -> str:
+        """
+        Generate a SAS URL for a blob with read permissions
+
+        Args:
+            container_name: Name of the container
+            blob_name: Name of the blob
+            expiry_hours: Hours until SAS token expires (default: 24h)
+            permissions: Permissions string (r=read, w=write, d=delete, l=list)
+
+        Returns:
+            Blob URL with SAS token
+        """
+        try:
+            blob_client = self.get_blob_client(container_name, blob_name)
+
+            # Parse connection string to get account name and key
+            conn_parts = dict(item.split('=', 1) for item in self.connection_string.split(';') if '=' in item)
+            account_name = conn_parts.get('AccountName')
+            account_key = conn_parts.get('AccountKey')
+
+            if not account_name or not account_key:
+                raise ValueError("Could not extract account name and key from connection string")
+
+            # Generate SAS token
+            sas_token = generate_blob_sas(
+                account_name=account_name,
+                container_name=container_name,
+                blob_name=blob_name,
+                account_key=account_key,
+                permission=BlobSasPermissions(read="r" in permissions, write="w" in permissions, delete="d" in permissions),
+                expiry=datetime.utcnow() + timedelta(hours=expiry_hours)
+            )
+
+            sas_url = f"{blob_client.url}?{sas_token}"
+            logger.info(f"Generated SAS URL for {blob_name} (expires in {expiry_hours}h)")
+            return sas_url
+
+        except Exception as e:
+            logger.error(f"Failed to generate SAS URL for {blob_name}: {str(e)}")
+            raise
+
+    def list_blobs_with_metadata(
+        self,
+        container_name: str,
+        name_starts_with: Optional[str] = None
+    ) -> List[Dict]:
+        """
+        List all blobs in a container with their metadata
+
+        Args:
+            container_name: Name of the container
+            name_starts_with: Filter blobs by name prefix
+
+        Returns:
+            List of dicts with blob name, last_modified, size
+        """
+        try:
+            container_client = self.blob_service_client.get_container_client(container_name)
+            blobs = container_client.list_blobs(name_starts_with=name_starts_with)
+
+            blob_list = []
+            for blob in blobs:
+                blob_list.append({
+                    "name": blob.name,
+                    "last_modified": blob.last_modified,
+                    "size": blob.size,
+                    "content_type": blob.content_settings.content_type if blob.content_settings else None
+                })
+
+            logger.info(f"Listed {len(blob_list)} blobs with metadata from container: {container_name}")
+            return blob_list
+
+        except AzureError as e:
+            logger.error(f"Failed to list blobs with metadata in container {container_name}: {str(e)}")
+            raise
 
 
 # Singleton instance

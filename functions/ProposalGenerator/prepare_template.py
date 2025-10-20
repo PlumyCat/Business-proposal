@@ -175,6 +175,17 @@ def prepare_template(req: func.HttpRequest) -> func.HttpResponse:
 
         logger.info(f"Working file saved to: {working_file_path}")
 
+        # Create .keep file to persist user folder even when empty
+        keep_file_path = get_user_file_path(user_folder, ".keep")
+        if not blob_client.blob_exists(container_name, keep_file_path):
+            blob_client.upload_blob(
+                container_name=container_name,
+                blob_name=keep_file_path,
+                data=b"# This file keeps the folder persistent in Azure Blob Storage",
+                overwrite=False
+            )
+            logger.info(f"Created .keep file in {user_folder}/")
+
         # Retourner résultat
         response_data = {
             "success": True,

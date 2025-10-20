@@ -80,3 +80,7 @@ Thumbs.db
 
 # Azure Bicep
 *.bicep.json
+
+# Dataverse exports (sensitive data)
+crb02_offrebeclouds.csv
+*.csv
